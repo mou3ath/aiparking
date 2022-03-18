@@ -4,7 +4,8 @@ from server import app,bcrypt
 from server.models import *
 from flask_login import login_user,logout_user,current_user,login_required
 
-@app.route('/')
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
     return render_template("index.html")
 
