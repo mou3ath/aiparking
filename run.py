@@ -2,5 +2,5 @@
 from server import app
 
 if __name__ == '__main__':
-    app.run(host='https://aiparking.herokuapp.com/')
+    app.run(host='localhost')
  
