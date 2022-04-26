@@ -1,14 +1,22 @@
-import json
-from flask import jsonify, render_template, request
+
+from flask import jsonify, redirect, render_template, request, url_for
 from server import app,bcrypt
 from server.models import *
 from flask_login import login_user,logout_user,current_user,login_required
-
+from werkzeug.utils import secure_filename
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     return render_template("index.html")
 
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    Paint(".\\server\\static\\images\\parkings\\park2.jpg",1)
+    return redirect(url_for('index'))
+
+@app.route('/addParking', methods=['GET','POST'])
+def addParking():
+    return render_template("addParking.html")
 #user model requests
 @app.route('/register', methods=['POST'])
 def register():
@@ -42,6 +50,7 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
+    print("login requested")
     # if(current_user.is_authenticated):
     #     return {'success':'false',
     #             'message':'user was loged in'}
@@ -49,12 +58,14 @@ def login():
     #get information
     uname=request.json['username']
     upassword= request.json['password']
+    print(f"{uname},{upassword}")
     #check if there is user with the user name 
     #and check password
     user = User.query.filter_by(username=uname ).first()
+    print(user)
     #the password checked with a ciphered mode for security issues
     if(user and bcrypt.check_password_hash(user.password,upassword)):
-        login_user(user)
+        # login_user(user)
         return {'success':'true',
                 'message':'success to login'}
     else:
@@ -70,6 +81,7 @@ def logout():
 #parking model routes
 @app.route('/parkings', methods=['POST','GET'])
 def getAllParkings():
+    print(" all parking request ")
     allParking=Parking.query.all()
     output = []
     for parking in allParking:
@@ -81,30 +93,50 @@ def getAllParkings():
                      })
     return jsonify(output)
 
-@app.route('/addParking', methods=['POST'])
-def addParking():
+@app.route('/newParking', methods=['POST'])
+def newParking():
     #get information
-    input = {
-        'lat':request.json['lat'],
-        'lon': request.json['lon'],
-        'parkName': request.json['parkName']
-    }
-    
    
-    #check if there is user with the user name 
-    #and check password
-    parking = Parking.query.filter_by(lat=input['lat'] , lon=input['lon']).first()
-    #the password checked with a ciphered mode for security issues
-    if(parking):
-         return {'success':'false',
-                'message':'Parking already exist'}
-    else:
+    
+    if 'file' in request.files:
         
-        parking= Parking(input)
-        db.session.add(parking)
-        db.session.commit()
-        return {'success':'true',
-                'message':'success to add parking'}
+        file=request.files.get('file')
+        filename=secure_filename(file.filename)
+       
+        input = {
+                'lat':request.form['lat'],
+                'lon': request.form['lon'],
+                'parkName': request.form['ParkingName'],
+                'cameraIP':request.form['cameraIP'],
+                'imagePath':filename
+            }
+   
+        print(input)
+        #check if there is user with the user name 
+        #and check password
+        parking = Parking.query.filter_by(lat=input['lat'] , lon=input['lon']).first()
+
+        #the password checked with a ciphered mode for security issues
+        if(parking):
+            return {'success':'false',
+                    'message':'Parking already exist'}
+        else:
+            
+           
+           
+            
+            
+                   
+            parking= Parking(input)
+            
+            db.session.add(parking)
+            
+            db.session.commit()
+            parking.imagePath=str(parking.id)+filename
+            file.save(f"server\\static\\images\\parkings\\{parking.imagePath}")
+            db.session.commit()
+            Paint(f"server\\static\\images\\parkings\\{parking.imagePath}",parking.id)
+        return redirect(url_for("index"))
 
 @app.route('/Parkings/<qlat>,<qlon>/<qdistance>', methods=['GET'])
 def getNearParkings(qlat,qlon,qdistance):
@@ -139,9 +171,10 @@ def reservePlace(placeid):
         place.reserved=True
         place.user_id = input['userId']
         db.session.commit()
-        return "true"
+        return {"result":"true"}
+    
     else:
-        return "False"
+        return {"result":"False"}
     
 @app.route('/unreserve/<placeid>', methods=['PUT'])
 def unreservePlace(placeid):
@@ -151,9 +184,9 @@ def unreservePlace(placeid):
         place.reserved=False
         place.user_id=None
         db.session.commit()
-        return "true"
+        return {"result":"true"}
     else:
-        return "False"
+        return {"result":"true"}
 
 @app.route('/addPlaces/<parkingId>', methods=['POST'])
 def addPlaces(parkingId):
